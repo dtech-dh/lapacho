@@ -13,7 +13,7 @@ provider "digitalocean" {
 
 variable "do_token" {}
 variable "ssh_key_id" {}
-variable "droplet_name" { default = "infra-droplet" }
+variable "droplet_name" { default = "lapacho" }
 variable "region" { default = "nyc3" }
 variable "size" { default = "s-2vcpu-2gb" }
 
