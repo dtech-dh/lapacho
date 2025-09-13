@@ -1,0 +1,57 @@
+name: Provision Droplet Infra
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          TF_VAR_ssh_key_id: ${{ secrets.DO_SSH_KEY_ID }}
+        run: terraform apply -auto-approve
+
+      - name: Save Droplet IP
+        id: droplet
+        working-directory: ./terraform
+        run: |
+          echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> $GITHUB_ENV
+
+  configure:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure Droplet via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ env.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            apt update && apt install -y git
+            mkdir -p /srv/infra
+            cd /srv/infra
+            git clone https://github.com/tu-org/lapacho.git . || git pull origin main
+            bash scripts/init.sh
+            docker-compose pull
+            docker-compose up -d
