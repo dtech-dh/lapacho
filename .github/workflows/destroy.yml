@@ -1,0 +1,26 @@
+name: Destroy Droplet
+
+on:
+  workflow_dispatch:   # Se ejecuta manualmente desde la pestaña Actions
+
+jobs:
+  terraform-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          TF_VAR_ssh_key_id: ${{ secrets.DO_SSH_KEY_ID }}
+        run: terraform destroy -auto-approve
