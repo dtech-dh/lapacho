@@ -1,13 +1,15 @@
-name: Provision Droplet Infra
+name: Deploy Infra Droplet
 
 on:
   push:
     branches:
-      - main
+      - main   # Se ejecuta cuando hay push a main
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
+    outputs:
+      droplet_ip: ${{ steps.tf_output.outputs.droplet_ip }}
 
     steps:
       - name: Checkout repo
@@ -27,11 +29,10 @@ jobs:
           TF_VAR_ssh_key_id: ${{ secrets.DO_SSH_KEY_ID }}
         run: terraform apply -auto-approve
 
-      - name: Save Droplet IP
-        id: droplet
+      - name: Get Droplet IP
+        id: tf_output
         working-directory: ./terraform
-        run: |
-          echo "DROPLET_IP=$(terraform output -raw droplet_ip)" >> $GITHUB_ENV
+        run: echo "droplet_ip=$(terraform output -raw droplet_ip)" >> $GITHUB_OUTPUT
 
   configure:
     needs: terraform
@@ -44,14 +45,18 @@ jobs:
       - name: Configure Droplet via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ env.DROPLET_IP }}
+          host: ${{ needs.terraform.outputs.droplet_ip }}
           username: root
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
-            apt update && apt install -y git
+            apt update && apt install -y git curl
             mkdir -p /srv/infra
             cd /srv/infra
-            git clone https://github.com/dtech-dh/lapacho.git . || git pull origin main
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/tu-org/infra-droplet.git .
+            else
+              git pull origin main
+            fi
             bash scripts/init.sh
             docker-compose pull
             docker-compose up -d
