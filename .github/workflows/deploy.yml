@@ -51,7 +51,7 @@ jobs:
             apt update && apt install -y git
             mkdir -p /srv/infra
             cd /srv/infra
-            git clone https://github.com/tu-org/lapacho.git . || git pull origin main
+            git clone https://github.com/dtech-dh/lapacho.git . || git pull origin main
             bash scripts/init.sh
             docker-compose pull
             docker-compose up -d
