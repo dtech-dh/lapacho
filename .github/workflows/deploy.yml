@@ -62,7 +62,7 @@ jobs:
             mkdir -p /srv/infra
             cd /srv/infra
             if [ ! -d ".git" ]; then
-              git clone https://github.com/tu-org/infra-droplet.git .
+              git clone https://github.com/dtech-dh/lapacho.git .
             else
               git pull origin main
             fi
