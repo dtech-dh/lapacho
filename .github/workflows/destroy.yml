@@ -1,7 +1,7 @@
 name: Destroy Droplet
 
 on:
-  workflow_dispatch:   # Se ejecuta manualmente desde la pestaña Actions
+  workflow_dispatch:   # Solo manual, desde Actions
 
 jobs:
   terraform-destroy:
