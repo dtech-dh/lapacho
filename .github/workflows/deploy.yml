@@ -39,10 +39,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Esperar que el droplet esté listo
+        run: |
+          echo "⏳ Esperando que el droplet esté listo..."
+          for i in {1..10}; do
+            nc -zv ${{ needs.terraform.outputs.droplet_ip }} 22 && break
+            echo "Aún no responde en SSH, reintentando..."
+            sleep 15
+          done
+
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Configure Droplet via SSH
+      - name: Configurar droplet via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ needs.terraform.outputs.droplet_ip }}
@@ -53,10 +62,11 @@ jobs:
             mkdir -p /srv/infra
             cd /srv/infra
             if [ ! -d ".git" ]; then
-              git clone https://github.com/dtech-dh/lapacho.git .
+              git clone https://github.com/tu-org/infra-droplet.git .
             else
               git pull origin main
             fi
             bash scripts/init.sh
             docker-compose pull
             docker-compose up -d
+
