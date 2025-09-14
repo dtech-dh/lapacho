@@ -1,0 +1,70 @@
+name: Deploy Infra Droplet
+
+on:
+  workflow_dispatch:   # Se ejecuta manualmente desde la pestaña Actions
+  
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    outputs:
+      droplet_ip: ${{ steps.tf_output.outputs.droplet_ip }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          TF_VAR_ssh_key_id: ${{ secrets.DO_SSH_KEY_ID }}
+        run: terraform apply -auto-approve
+
+      - name: Get Droplet IP
+        id: tf_output
+        working-directory: ./terraform
+        run: echo "droplet_ip=$(terraform output -raw droplet_ip)" >> $GITHUB_OUTPUT
+
+  configure:
+    needs: terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Esperar que el droplet esté listo
+        run: |
+          echo "⏳ Esperando que el droplet esté listo..."
+          for i in {1..10}; do
+            nc -zv ${{ needs.terraform.outputs.droplet_ip }} 22 && break
+            echo "Aún no responde en SSH, reintentando..."
+            sleep 15
+          done
+
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configurar droplet via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ needs.terraform.outputs.droplet_ip }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            apt update && apt install -y git curl
+            mkdir -p /srv/infra
+            cd /srv/infra
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/dtech-dh/lapacho.git .
+            else
+              git pull origin main
+            fi
+            bash scripts/init.sh
+            docker-compose pull
+            docker-compose up -d
+
