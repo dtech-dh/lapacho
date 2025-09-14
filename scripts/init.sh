@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
+export DEBIAN_FRONTEND=noninteractive
 
-# Actualizar sistema
-apt-get update && apt-get upgrade -y
+# Actualizar sistema sin pedir confirmación
+apt-get update
+apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" upgrade
 
-# Instalar dependencias
+# Instalar dependencias básicas
 apt-get install -y apt-transport-https ca-certificates curl software-properties-common git ufw
 
 # Instalar Docker
